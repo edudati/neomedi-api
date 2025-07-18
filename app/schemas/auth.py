@@ -8,11 +8,23 @@ class SignupRequest(BaseModel):
     firebase_token: str  # ID token do Firebase
 
 
+class LoginRequest(BaseModel):
+    firebase_token: str  # ID token do Firebase
+
+
 class SignupResponse(BaseModel):
     id: int
     email: str
     firebase_uid: str
     created_at: datetime
+    is_active: bool
+    message: str
+
+
+class LoginResponse(BaseModel):
+    id: int
+    email: str
+    firebase_uid: str
     is_active: bool
     message: str
 

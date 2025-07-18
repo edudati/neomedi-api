@@ -48,4 +48,10 @@ class UserService:
         elif user_by_uid is not None:
             return {"error": "Firebase UID já existe", "existing_email": user_by_uid.email}
         
-        return {"error": None} 
+        return {"error": None}
+    
+    @staticmethod
+    def update_last_login(db: Session, user_id: int) -> None:
+        """Atualiza o último login do usuário"""
+        # TODO: Implementar atualização do last_login
+        pass 

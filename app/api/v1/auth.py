@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.auth import SignupRequest, SignupResponse
+from app.schemas.auth import SignupRequest, SignupResponse, LoginRequest, LoginResponse
 from app.schemas.user import UserCreate
 from app.services.user_service import UserService
 from app.services.auth_service import FirebaseAuthService
@@ -67,4 +67,53 @@ def signup(user_data: SignupRequest, db: Session = Depends(get_db)):
         created_at=new_user.created_at,
         is_active=new_user.is_active,
         message="Usuário criado com sucesso"
-    ) 
+    )
+
+
+@router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+def login(login_data: LoginRequest, db: Session = Depends(get_db)):
+    """
+    Endpoint para login de usuário existente
+    """
+    # Validação do token do Firebase
+    try:
+        firebase_service = FirebaseAuthService()
+        
+        # Verificar token do Firebase
+        token_data = firebase_service.verify_firebase_token(login_data.firebase_token)
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token do Firebase inválido"
+            )
+        
+        # Buscar usuário no banco pelo firebase_uid
+        user = UserService.get_user_by_firebase_uid(db, token_data['uid'])
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuário não encontrado. Faça o cadastro primeiro."
+            )
+        
+        # Verificar se usuário está ativo
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Usuário inativo"
+            )
+        
+        return LoginResponse(
+            id=user.id,
+            email=user.email,
+            firebase_uid=user.firebase_uid,
+            is_active=user.is_active,
+            message="Login realizado com sucesso"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erro interno do servidor"
+        ) 
