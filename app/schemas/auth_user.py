@@ -6,7 +6,7 @@ from datetime import datetime
 class AuthUserBase(BaseModel):
     """Schema base para auth_user"""
     email: EmailStr
-    nome: str
+    display_name: str
     email_verified: bool = False
     picture: Optional[str] = None
 
@@ -18,7 +18,7 @@ class AuthUserCreate(AuthUserBase):
 
 class AuthUserUpdate(BaseModel):
     """Schema para atualizar auth_user"""
-    nome: Optional[str] = None
+    display_name: Optional[str] = None
     email_verified: Optional[bool] = None
     picture: Optional[str] = None
 
@@ -43,16 +43,20 @@ class SignupResponse(BaseModel):
     """Schema para resposta de signup"""
     success: bool
     message: str
-    user: Optional[AuthUserResponse] = None
     is_new_user: bool = False
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
+    email_verified: Optional[bool] = None
+    is_active: Optional[bool] = None
+    created_at: Optional[datetime] = None
 
 
 class LoginResponse(BaseModel):
     """Schema para resposta de login"""
     success: bool
     message: str
-    user: Optional[AuthUserResponse] = None
     access_token: Optional[str] = None
-    refresh_token: Optional[str] = None 
+    refresh_token: Optional[str] = None
+    email_verified: Optional[bool] = None
+    is_active: Optional[bool] = None
+    created_at: Optional[datetime] = None 

@@ -13,7 +13,6 @@ class JWTTokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     expires_in: int
-    user: Dict[str, Any]
 
 
 class RefreshTokenRequest(BaseModel):
@@ -27,14 +26,11 @@ class UserInfo(BaseModel):
     email: EmailStr
     email_verified: bool
     name: Optional[str] = None
+    user_uid: Optional[str] = None
     picture: Optional[str] = None
 
 
-class LoginResponse(BaseModel):
-    """Schema para resposta de login"""
-    success: bool
-    message: str
-    data: Optional[JWTTokenResponse] = None
+
 
 
 class LogoutResponse(BaseModel):
