@@ -376,6 +376,7 @@ firebase-adminsdk-*.json
 Dockerfile.dev
 docker-compose.override.yml
 docker-compose.prod.yml
+docker-compose.yml
 
 # Terraform
 *.tfstate
@@ -604,4 +605,4 @@ dmypy.json
 .pytype/
 
 # Cython debug symbols
-cython_debug/ 
+cython_debug/

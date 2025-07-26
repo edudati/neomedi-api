@@ -6,7 +6,7 @@ from datetime import datetime
 class AuthUserBase(BaseModel):
     """Schema base para auth_user"""
     email: EmailStr
-    nome: str
+    display_name: str
     email_verified: bool = False
     picture: Optional[str] = None
 
@@ -18,7 +18,7 @@ class AuthUserCreate(AuthUserBase):
 
 class AuthUserUpdate(BaseModel):
     """Schema para atualizar auth_user"""
-    nome: Optional[str] = None
+    display_name: Optional[str] = None
     email_verified: Optional[bool] = None
     picture: Optional[str] = None
 

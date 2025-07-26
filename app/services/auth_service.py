@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from app.models.auth_user import AuthUser
+from app.models.user import User, UserRole
 from app.schemas.auth_user import AuthUserCreate, AuthUserUpdate
+from app.schemas.user import UserCreate
 from app.core.security import verify_firebase_token, create_jwt_token, create_refresh_token
 from typing import Optional, Tuple, Dict, Any
 
@@ -25,6 +27,20 @@ class AuthService:
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
+        
+        # Criar User automaticamente com padrões definidos
+        user_create_data = UserCreate(
+            auth_user_id=db_user.id,
+            name=db_user.display_name,  # Usar display_name do AuthUser
+            role=UserRole.ADMIN,  # Padrão: ADMIN
+            is_verified=False,    # Padrão: False
+            is_active=True        # Padrão: True
+        )
+        
+        db_system_user = User(**user_create_data.dict())
+        db.add(db_system_user)
+        db.commit()
+        
         return db_user
 
     @staticmethod
@@ -55,7 +71,7 @@ class AuthService:
         if user:
             # Usuário existe - atualizar dados se necessário
             update_data = AuthUserUpdate(
-                nome=firebase_data.get("name") or firebase_data["email"].split("@")[0] or user.nome,
+                display_name=firebase_data.get("name") or firebase_data["email"].split("@")[0] or user.display_name,
                 email_verified=firebase_data.get("email_verified", user.email_verified),
                 picture=firebase_data.get("picture", user.picture)
             )
@@ -63,11 +79,11 @@ class AuthService:
             is_new_user = False
         else:
             # Novo usuário - criar
-            nome = firebase_data.get("name") or firebase_data["email"].split("@")[0]
+            display_name = firebase_data.get("name") or firebase_data["email"].split("@")[0]
             user_data = AuthUserCreate(
                 firebase_uid=firebase_data["uid"],
                 email=firebase_data["email"],
-                nome=nome,
+                display_name=display_name,
                 email_verified=firebase_data.get("email_verified", False),
                 picture=firebase_data.get("picture")
             )
@@ -86,7 +102,7 @@ class AuthService:
             "id": user.id,
             "firebase_uid": user.firebase_uid,
             "email": user.email,
-            "nome": user.nome,
+            "display_name": user.display_name,
             "email_verified": user.email_verified,
             "picture": user.picture
         }

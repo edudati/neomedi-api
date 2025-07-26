@@ -214,7 +214,7 @@ async def validate_token(request: FirebaseTokenRequest):
                 uid=user_data.get("firebase_uid"),
                 email=user_data.get("email"),
                 email_verified=user_data.get("email_verified", False),
-                name=user_data.get("nome"),
+                name=user_data.get("display_name"),
                 picture=None
             ),
             message="Token JWT válido"
