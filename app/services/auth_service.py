@@ -91,20 +91,26 @@ class AuthService:
             is_new_user = True
         
         # Criar tokens JWT
-        access_token, refresh_token = AuthService.create_auth_tokens(user)
+        access_token, refresh_token = AuthService.create_auth_tokens(user, db)
         
         return user, is_new_user, access_token, refresh_token
 
     @staticmethod
-    def create_auth_tokens(user: AuthUser) -> Tuple[str, str]:
+    def create_auth_tokens(user: AuthUser, db: Session = None) -> Tuple[str, str]:
         """Cria access token e refresh token para o usuário"""
+        # Buscar dados do User relacionado se db for fornecido
+        user_system = None
+        if db:
+            from app.models.user import User
+            user_system = db.query(User).filter(User.auth_user_id == user.id).first()
+        else:
+            user_system = user.user
+        
         user_data = {
-            "id": user.id,
-            "firebase_uid": user.firebase_uid,
             "email": user.email,
-            "display_name": user.display_name,
-            "email_verified": user.email_verified,
-            "picture": user.picture
+            "name": user_system.name if user_system else user.display_name,
+            "user_uid": str(user_system.id) if user_system else None,
+            "role": user_system.role.value if user_system else None
         }
         
         access_token = create_jwt_token(user_data)

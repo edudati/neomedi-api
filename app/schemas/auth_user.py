@@ -43,16 +43,20 @@ class SignupResponse(BaseModel):
     """Schema para resposta de signup"""
     success: bool
     message: str
-    user: Optional[AuthUserResponse] = None
     is_new_user: bool = False
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
+    email_verified: Optional[bool] = None
+    is_active: Optional[bool] = None
+    created_at: Optional[datetime] = None
 
 
 class LoginResponse(BaseModel):
     """Schema para resposta de login"""
     success: bool
     message: str
-    user: Optional[AuthUserResponse] = None
     access_token: Optional[str] = None
-    refresh_token: Optional[str] = None 
+    refresh_token: Optional[str] = None
+    email_verified: Optional[bool] = None
+    is_active: Optional[bool] = None
+    created_at: Optional[datetime] = None 

@@ -2,6 +2,7 @@ from datetime import timedelta
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
+from typing import Dict, Any
 
 from app.core.security import (
     verify_firebase_token,
@@ -63,10 +64,12 @@ async def signup_with_firebase(
         return SignupResponse(
             success=True,
             message="Usuário criado com sucesso",
-            user=AuthUserResponse.from_orm(user),
             is_new_user=True,
             access_token=access_token,
-            refresh_token=refresh_token
+            refresh_token=refresh_token,
+            email_verified=user.email_verified,
+            is_active=user.user.is_active if user.user else True,
+            created_at=user.created_at
         )
         
     except HTTPException as e:
@@ -107,29 +110,28 @@ async def login_with_firebase(
         if is_new_user:
             return LoginResponse(
                 success=False,
-                message="Usuário não encontrado. Use o endpoint /signup primeiro",
-                user=None
+                message="Usuário não encontrado. Use o endpoint /signup primeiro"
             )
         
         return LoginResponse(
             success=True,
             message="Login realizado com sucesso",
-            user=AuthUserResponse.from_orm(user),
             access_token=access_token,
-            refresh_token=refresh_token
+            refresh_token=refresh_token,
+            email_verified=user.email_verified,
+            is_active=user.user.is_active if user.user else True,
+            created_at=user.created_at
         )
         
     except HTTPException as e:
         return LoginResponse(
             success=False,
-            message=f"Erro no login: {e.detail}",
-            user=None
+            message=f"Erro no login: {e.detail}"
         )
     except Exception as e:
         return LoginResponse(
             success=False,
-            message=f"Erro interno: {str(e)}",
-            user=None
+            message=f"Erro interno: {str(e)}"
         )
 
 
@@ -144,16 +146,11 @@ async def refresh_token(request: RefreshTokenRequest):
         # Renovar access token
         new_access_token = refresh_access_token(request.refresh_token)
         
-        # Decodificar o token para obter dados do usuário
-        from app.core.security import verify_jwt_token
-        user_data = verify_jwt_token(new_access_token)
-        
         return JWTTokenResponse(
             access_token=new_access_token,
             refresh_token=request.refresh_token,  # Mantém o mesmo refresh token
             token_type="bearer",
-            expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            user=user_data
+            expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
         
     except HTTPException as e:
@@ -211,10 +208,11 @@ async def validate_token(request: FirebaseTokenRequest):
         return TokenValidationResponse(
             valid=True,
             user=UserInfo(
-                uid=user_data.get("firebase_uid"),
+                uid=user_data.get("user_uid"),
                 email=user_data.get("email"),
                 email_verified=user_data.get("email_verified", False),
-                name=user_data.get("display_name"),
+                name=user_data.get("name"),
+                user_uid=user_data.get("user_uid"),
                 picture=None
             ),
             message="Token JWT válido"
@@ -232,6 +230,7 @@ async def validate_token(request: FirebaseTokenRequest):
                     email=user_data.get("email"),
                     email_verified=user_data.get("email_verified", False),
                     name=user_data.get("name"),
+                    user_uid=None,  # Firebase não tem user_uid do sistema
                     picture=user_data.get("picture")
                 ),
                 message="Token Firebase válido"
@@ -242,6 +241,23 @@ async def validate_token(request: FirebaseTokenRequest):
                 valid=False,
                 message="Token inválido"
             )
+
+
+@router.get("/me", response_model=UserInfo)
+async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
+    """
+    Retorna informações do usuário atual baseado no JWT.
+    
+    O frontend pode usar este endpoint para extrair email, name e user_uid do JWT.
+    """
+    return UserInfo(
+        uid=current_user.get("user_uid"),
+        email=current_user.get("email"),
+        email_verified=current_user.get("email_verified", False),
+        name=current_user.get("name"),
+        user_uid=current_user.get("user_uid"),
+        picture=None
+    )
 
 
 @router.get("/health")
