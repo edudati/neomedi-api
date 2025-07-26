@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # Aplicação FastAPI
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://neomedi:neomedi123@db:5432/neomedi_db
+    depends_on:
+      - db
+    networks:
+      - neomedi-network
+
+  # Banco de dados PostgreSQL
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=neomedi_db
+      - POSTGRES_USER=neomedi
+      - POSTGRES_PASSWORD=neomedi123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - neomedi-network
+
+  # Redis (para cache e sessões)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - neomedi-network
+
+volumes:
+  postgres_data:
+
+networks:
+  neomedi-network:
+    driver: bridge 
