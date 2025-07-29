@@ -43,8 +43,8 @@ async def signup_with_firebase(
     Fluxo:
     1. Recebe token do Firebase do frontend
     2. Verifica o token com Firebase
-    3. Cria novo auth_user no banco
-    4. Retorna dados do usuário criado + tokens JWT
+    3. Cria novo auth_user no banco (se não existir)
+    4. Retorna dados do usuário + tokens JWT
     """
     print(f"🔐 Recebendo requisição de signup")
     try:
@@ -52,19 +52,11 @@ async def signup_with_firebase(
         # Processar token e criar/atualizar usuário + gerar tokens
         user, is_new_user, access_token, refresh_token = AuthService.process_firebase_token(db, request.firebase_token)
         
-        if not is_new_user:
-            print(f"⚠️ Usuário já existe")
-            return SignupResponse(
-                success=False,
-                message="Usuário já existe. Use o endpoint /login",
-                is_new_user=False
-            )
-        
-        print(f"✅ Usuário criado com sucesso: {user.email}")
+        print(f"✅ {'Usuário criado' if is_new_user else 'Usuário atualizado'} com sucesso: {user.email}")
         return SignupResponse(
             success=True,
-            message="Usuário criado com sucesso",
-            is_new_user=True,
+            message="Signup realizado com sucesso" if is_new_user else "Usuário já existe, dados atualizados",
+            is_new_user=is_new_user,
             access_token=access_token,
             refresh_token=refresh_token,
             email_verified=user.email_verified,
@@ -99,7 +91,7 @@ async def login_with_firebase(
     Fluxo:
     1. Recebe token do Firebase do frontend
     2. Verifica o token com Firebase
-    3. Busca/atualiza auth_user no banco
+    3. Busca/atualiza auth_user no banco (cria se não existir)
     4. Cria JWT local com expiração de 15 min
     5. Cria refresh token com expiração de 7 dias
     """
@@ -107,15 +99,9 @@ async def login_with_firebase(
         # Processar token e buscar/atualizar usuário + gerar tokens
         user, is_new_user, access_token, refresh_token = AuthService.process_firebase_token(db, request.firebase_token)
         
-        if is_new_user:
-            return LoginResponse(
-                success=False,
-                message="Usuário não encontrado. Use o endpoint /signup primeiro"
-            )
-        
         return LoginResponse(
             success=True,
-            message="Login realizado com sucesso",
+            message="Login realizado com sucesso" if not is_new_user else "Novo usuário criado durante login",
             access_token=access_token,
             refresh_token=refresh_token,
             email_verified=user.email_verified,
