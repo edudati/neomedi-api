@@ -55,6 +55,7 @@ class LoginResponse(BaseModel):
     """Schema para resposta de login"""
     success: bool
     message: str
+    is_new_user: bool = False
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     email_verified: Optional[bool] = None
