@@ -22,7 +22,8 @@ class Address(Base):
     longitude = Column(Float, nullable=True)
 
     # Relacionamentos
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True)
     user = relationship("User", back_populates="address")
     company = relationship("Company", back_populates="address", uselist=False)
 

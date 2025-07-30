@@ -18,7 +18,7 @@ class Company(Base):
     legal_id = Column(String, nullable=False)  # CNPJ
     email = Column(String, nullable=False)  # Email institucional
     phone = Column(String, nullable=True)  # Telefone principal
-    address_id = Column(UUID(as_uuid=True), ForeignKey("addresses.id"), nullable=True)
+
     is_active = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)
     is_visible = Column(Boolean, default=True)

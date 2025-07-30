@@ -57,6 +57,148 @@ class CompanyService:
         ).first()
 
     @staticmethod
+    def get_company_by_user_id_with_address(db: Session, user_id: UUID) -> Optional[dict]:
+        """Buscar company por user_id com dados do endereço"""
+        db_company = db.query(Company).filter(
+            and_(
+                Company.user_id == user_id,
+                Company.is_deleted == False
+            )
+        ).first()
+        
+        if not db_company:
+            return None
+        
+        # Buscar endereço da company (se existir)
+        address_data = None
+        company_address = db.query(Address).filter(Address.company_id == db_company.id).first()
+        if company_address:
+            address_data = {
+                "id": company_address.id,
+                "street": company_address.street,
+                "number": company_address.number,
+                "complement": company_address.complement,
+                "neighbourhood": company_address.neighbourhood,
+                "city": company_address.city,
+                "state": company_address.state,
+                "zip_code": company_address.zip_code,
+                "country": company_address.country,
+                "latitude": company_address.latitude,
+                "longitude": company_address.longitude
+            }
+        
+        return {
+            "id": db_company.id,
+            "user_id": db_company.user_id,
+            "name": db_company.name,
+            "legal_name": db_company.legal_name,
+            "legal_id": db_company.legal_id,
+            "email": db_company.email,
+            "phone": db_company.phone,
+            "is_active": db_company.is_active,
+            "is_deleted": db_company.is_deleted,
+            "is_visible": db_company.is_visible,
+            "is_public": db_company.is_public,
+            "created_at": db_company.created_at,
+            "updated_at": db_company.updated_at,
+            "address": address_data
+        }
+
+    @staticmethod
+    def get_company_address_by_user_id(db: Session, user_id: UUID) -> Optional[dict]:
+        """Buscar endereço da company através do user_id"""
+        # Primeiro buscar a company do usuário
+        db_company = db.query(Company).filter(
+            and_(
+                Company.user_id == user_id,
+                Company.is_deleted == False
+            )
+        ).first()
+        
+        if not db_company:
+            return None
+        
+        # Buscar endereço da company
+        address = db.query(Address).filter(Address.company_id == db_company.id).first()
+        if not address:
+            return None
+        
+        return {
+            "id": address.id,
+            "street": address.street,
+            "number": address.number,
+            "complement": address.complement,
+            "neighbourhood": address.neighbourhood,
+            "city": address.city,
+            "state": address.state,
+            "zip_code": address.zip_code,
+            "country": address.country,
+            "latitude": address.latitude,
+            "longitude": address.longitude,
+            "company_id": address.company_id
+        }
+
+    @staticmethod
+    def get_company_address_by_company_id(db: Session, company_id: UUID) -> Optional[dict]:
+        """Buscar endereço da company por company_id"""
+        address = db.query(Address).filter(Address.company_id == company_id).first()
+        if not address:
+            return None
+        
+        return {
+            "id": address.id,
+            "street": address.street,
+            "number": address.number,
+            "complement": address.complement,
+            "neighbourhood": address.neighbourhood,
+            "city": address.city,
+            "state": address.state,
+            "zip_code": address.zip_code,
+            "country": address.country,
+            "latitude": address.latitude,
+            "longitude": address.longitude,
+            "company_id": address.company_id
+        }
+
+    @staticmethod
+    def update_company_address(db: Session, company_id: UUID, address_data: dict) -> Optional[dict]:
+        """Atualizar endereço da company"""
+        # Buscar endereço existente da company
+        existing_address = db.query(Address).filter(Address.company_id == company_id).first()
+        
+        if existing_address:
+            # Atualizar endereço existente
+            for field, value in address_data.items():
+                if hasattr(existing_address, field):
+                    setattr(existing_address, field, value)
+            db.commit()
+            db.refresh(existing_address)
+            address = existing_address
+        else:
+            # Criar novo endereço para a company
+            address_data["company_id"] = company_id
+            new_address = Address(**address_data)
+            db.add(new_address)
+            db.commit()
+            db.refresh(new_address)
+            address = new_address
+        
+        return {
+            "id": address.id,
+            "street": address.street,
+            "number": address.number,
+            "complement": address.complement,
+            "neighbourhood": address.neighbourhood,
+            "city": address.city,
+            "state": address.state,
+            "zip_code": address.zip_code,
+            "country": address.country,
+            "latitude": address.latitude,
+            "longitude": address.longitude,
+            "company_id": address.company_id
+        }
+
+    @staticmethod
     def get_companies(
         db: Session, 
         skip: int = 0, 
@@ -102,7 +244,7 @@ class CompanyService:
     @staticmethod
     def get_company_with_address(db: Session, company_id: UUID) -> Optional[dict]:
         """Buscar company com dados do endereço"""
-        db_company = db.query(Company).join(Address, Company.address_id == Address.id, isouter=True).filter(
+        db_company = db.query(Company).filter(
             and_(
                 Company.id == company_id,
                 Company.is_deleted == False
@@ -112,21 +254,22 @@ class CompanyService:
         if not db_company:
             return None
         
-        # Dados do endereço (se existir)
+        # Buscar endereço da company
         address_data = None
-        if db_company.address:
+        company_address = db.query(Address).filter(Address.company_id == company_id).first()
+        if company_address:
             address_data = {
-                "id": db_company.address.id,
-                "street": db_company.address.street,
-                "number": db_company.address.number,
-                "complement": db_company.address.complement,
-                "neighbourhood": db_company.address.neighbourhood,
-                "city": db_company.address.city,
-                "state": db_company.address.state,
-                "zip_code": db_company.address.zip_code,
-                "country": db_company.address.country,
-                "latitude": db_company.address.latitude,
-                "longitude": db_company.address.longitude
+                "id": company_address.id,
+                "street": company_address.street,
+                "number": company_address.number,
+                "complement": company_address.complement,
+                "neighbourhood": company_address.neighbourhood,
+                "city": company_address.city,
+                "state": company_address.state,
+                "zip_code": company_address.zip_code,
+                "country": company_address.country,
+                "latitude": company_address.latitude,
+                "longitude": company_address.longitude
             }
         
         return {
@@ -137,7 +280,6 @@ class CompanyService:
             "legal_id": db_company.legal_id,
             "email": db_company.email,
             "phone": db_company.phone,
-            "address_id": db_company.address_id,
             "is_active": db_company.is_active,
             "is_deleted": db_company.is_deleted,
             "is_visible": db_company.is_visible,
