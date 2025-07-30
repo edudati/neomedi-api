@@ -58,4 +58,12 @@ class UserWithAuthResponse(UserResponse):
     address: Optional[dict] = None  # Dados do endereço (se existir)
 
     class Config:
+        from_attributes = True
+
+
+class UserBasicResponse(UserResponse):
+    """Schema para resposta de User com dados básicos (sem endereço)"""
+    auth_user: dict  # Dados básicos do AuthUser
+
+    class Config:
         from_attributes = True 

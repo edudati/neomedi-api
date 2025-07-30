@@ -9,6 +9,7 @@ from app.models.auth_user import AuthUser
 from app.models.address import Address
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_current_user
+from .company_service import CompanyService
 
 
 class UserService:
@@ -21,6 +22,19 @@ class UserService:
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
+        
+        # Se o usuário for admin, criar company automaticamente
+        if db_user.role == UserRole.ADMIN:
+            # Buscar dados do auth_user para obter o email
+            auth_user = db.query(AuthUser).filter(AuthUser.id == db_user.auth_user_id).first()
+            if auth_user:
+                CompanyService.create_company_for_admin(
+                    db=db,
+                    user_id=db_user.id,
+                    user_name=db_user.name,
+                    user_email=auth_user.email
+                )
+        
         return db_user
 
     @staticmethod
