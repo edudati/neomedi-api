@@ -37,6 +37,10 @@ class User(Base):
     # Relacionamentos
     auth_user = relationship("AuthUser", back_populates="user")
     address = relationship("Address", back_populates="user", uselist=False)
+    companies = relationship("Company", back_populates="user")
+    professional = relationship("Professional", back_populates="user", uselist=False)
+    assistant = relationship("UserAssistant", back_populates="user", uselist=False)
+    created_specialties = relationship("Specialty", back_populates="created_by_user")
 
     def __repr__(self):
         return f"<User(id={self.id}, name='{self.name}', role='{self.role.value}')>" 

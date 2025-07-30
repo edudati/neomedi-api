@@ -159,24 +159,21 @@ async def logout(current_user: dict = Depends(get_current_user)):
     )
 
 
-@router.get("/me", response_model=AuthUserResponse)
-async def get_current_user_info(
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+@router.get("/me", response_model=UserInfo)
+async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
-    Retorna informações do usuário atual.
+    Retorna informações do usuário atual baseado no JWT.
+    
+    O frontend pode usar este endpoint para extrair email, name e user_uid do JWT.
     """
-    # Buscar usuário no banco
-    user = AuthService.get_user_by_firebase_uid(db, current_user.get("firebase_uid"))
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuário não encontrado"
-        )
-    
-    return AuthUserResponse.from_orm(user)
+    return UserInfo(
+        uid=current_user.get("user_uid"),
+        email=current_user.get("email"),
+        email_verified=current_user.get("email_verified", False),
+        name=current_user.get("name"),
+        user_uid=current_user.get("user_uid"),
+        picture=None
+    )
 
 
 @router.post("/validate", response_model=TokenValidationResponse)
@@ -227,23 +224,6 @@ async def validate_token(request: FirebaseTokenRequest):
                 valid=False,
                 message="Token inválido"
             )
-
-
-@router.get("/me", response_model=UserInfo)
-async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
-    """
-    Retorna informações do usuário atual baseado no JWT.
-    
-    O frontend pode usar este endpoint para extrair email, name e user_uid do JWT.
-    """
-    return UserInfo(
-        uid=current_user.get("user_uid"),
-        email=current_user.get("email"),
-        email_verified=current_user.get("email_verified", False),
-        name=current_user.get("name"),
-        user_uid=current_user.get("user_uid"),
-        picture=None
-    )
 
 
 @router.get("/health")

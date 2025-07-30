@@ -21,9 +21,11 @@ class Address(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
-    # Relacionamento com User (1:1)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False)
+    # Relacionamentos
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True)
     user = relationship("User", back_populates="address")
+    company = relationship("Company", back_populates="address", uselist=False)
 
     def __repr__(self):
         return f"<Address(id={self.id}, street='{self.street}', city='{self.city}')>" 

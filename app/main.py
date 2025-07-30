@@ -3,9 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.api.v1.routes import auth
+from app.api.v1.routes import auth, company, professional, user_assistant, user
 from app.db.database import create_tables
-from app.models import auth_user  # Importar modelos para criar tabelas
+from app.models import (  # Importar modelos para criar tabelas
+    auth_user,
+    company as company_model,
+    professional as professional_model,
+    specialty as specialty_model,
+    profession as profession_model,
+    user_assistant as user_assistant_model
+)
 
 
 @asynccontextmanager
@@ -43,18 +50,35 @@ app = FastAPI(
 print(f"CORS configured with allowed origins: {settings.ALLOWED_ORIGINS}")
 print(f"Allowed methods: GET, POST, PUT, DELETE, OPTIONS, PATCH")
 print(f"Allowed headers: *")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
+
+# Configuração CORS mais permissiva para desenvolvimento
+if settings.DEBUG:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Permite todas as origens em desenvolvimento
+        allow_credentials=True,
+        allow_methods=["*"],  # Permite todos os métodos
+        allow_headers=["*"],  # Permite todos os headers
+        expose_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+    )
+
 print("CORS configured successfully!")
 
 # Incluir rotas
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(user.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(company.router, prefix="/api/v1/companies", tags=["companies"])
+app.include_router(professional.router, prefix="/api/v1/professionals", tags=["professionals"])
+app.include_router(user_assistant.router, prefix="/api/v1/user-assistants", tags=["user-assistants"])
 
 
 @app.get("/")
