@@ -8,6 +8,7 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.user import UserBasicResponse, UserWithAuthResponse, UserUpdate
 from app.schemas.address import UserAddressUpdate
+from app.schemas.user_client import CreateClientRequest, CreateClientResponse
 from app.services.user import UserService
 from app.services.address import AddressService
 from app.services.user_client import UserClientService
@@ -133,45 +134,50 @@ async def update_user_address(
     return user_data_response 
 
 
-@router.post("/clients", response_model=dict)
+@router.post("/clients", response_model=CreateClientResponse)
 async def create_user_client(
-    request: dict,
+    request: CreateClientRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Criar novo usuário CLIENT.
     
-    Requer:
-    - firebase_token: string
-    - professional_id: UUID
-    - company_id: UUID
+    Requer autenticação de um professional.
+    O professional_id vem do JWT do usuário autenticado.
     """
     try:
-        # Validar campos obrigatórios
-        firebase_token = request.get("firebase_token")
-        professional_id = request.get("professional_id")
-        company_id = request.get("company_id")
+        # Validar se o usuário autenticado é um professional
+        user_role = current_user.get("role")
+        if user_role != "professional":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Apenas professionals podem criar clients"
+            )
         
-        if not all([firebase_token, professional_id, company_id]):
+        # Pegar o user_id do professional do JWT
+        professional_user_id = current_user.get("user_uid")
+        if not professional_user_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="firebase_token, professional_id e company_id são obrigatórios"
+                detail="user_uid não encontrado no token"
             )
         
         # Criar user_client usando o serviço
-        user_client = UserClientService.create_user_client(
+        result = UserClientService.create_user_client(
             db=db,
-            firebase_token=firebase_token,
-            professional_id=professional_id,
-            company_id=company_id
+            professional_user_id=UUID(professional_user_id),
+            company_id=request.company_id,
+            client_name=request.name,
+            firebase_token=request.firebase_token
         )
         
-        return {
-            "success": True,
-            "message": "Usuário CLIENT criado com sucesso",
-            "user_client_id": str(user_client.user_id)
-        }
+        return CreateClientResponse(
+            success=result["success"],
+            message=result["message"],
+            client_id=result["client_id"],
+            client_data=result["client_data"]
+        )
         
     except HTTPException as e:
         raise e
