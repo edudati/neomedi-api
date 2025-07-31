@@ -37,7 +37,7 @@ class User(Base):
     address = relationship("Address", back_populates="user", uselist=False)
     professional = relationship("UserProfessional", back_populates="user", uselist=False)
     client = relationship("UserClient", back_populates="user", uselist=False)
-
+    companies = relationship("Company", back_populates="user_professional")
 
 
     def __repr__(self):

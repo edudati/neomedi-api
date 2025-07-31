@@ -10,14 +10,14 @@ class Address(Base):
     __tablename__ = "addresses"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    street = Column(String, nullable=False)
-    number = Column(String, nullable=False)
+    street = Column(String, nullable=True)
+    number = Column(String, nullable=True)
     complement = Column(String, nullable=True)
-    neighbourhood = Column(String, nullable=False)
-    city = Column(String, nullable=False)
-    state = Column(String, nullable=False)
-    zip_code = Column(String, nullable=False)
-    country = Column(String, nullable=False, default="Brasil")
+    neighbourhood = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    state = Column(String, nullable=True)
+    zip_code = Column(String, nullable=True)
+    country = Column(String, nullable=True, default="Brasil")
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 

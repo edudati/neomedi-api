@@ -16,75 +16,21 @@ class UserService:
     """Serviço para gerenciar usuários do sistema"""
 
     @staticmethod
-    def create_user(db: Session, user_data: UserCreate) -> User:
-        """Criar novo usuário"""
-        auth_user = db.query(AuthUser).filter(AuthUser.id == user_data.auth_user_id).first()
-        user_dict = user_data.dict()
-        if auth_user:
-            user_dict['email'] = auth_user.email
-            user_dict['profile_picture_url'] = auth_user.picture if auth_user.picture else None
-            user_dict['name'] = auth_user.display_name if auth_user.display_name else user_dict.get('name')
-        user_dict['has_access'] = True
-        user_dict['is_active'] = True
-        user_dict['is_verified'] = False
-        db_user = User(**user_dict)
-        db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
-
-        # Criar UserProfessional em branco
-        from app.models.user_professional import UserProfessional
-        user_professional = UserProfessional(user_id=db_user.id)
-        db.add(user_professional)
-
-        # Criar Address em branco para o User (com valores default)
-        from app.models.address import Address
-        user_address = Address(
-            user_id=db_user.id,
-            street="",
-            number="",
-            neighbourhood="",
-            city="",
-            state="",
-            zip_code="",
-            country="Brasil"
+    def create_user(db: Session, auth_user: AuthUser, role: UserRole, **user_fields) -> User:
+        user = User(
+            auth_user_id=auth_user.id,
+            name=auth_user.display_name,
+            email=auth_user.email,  # Garantir que o email seja preenchido
+            role=role,
+            is_verified=False,
+            is_active=True,
+            has_access=True,  # Garantir que has_access seja True
+            **user_fields
         )
-        db.add(user_address)
-
-        # Criar Company em branco associada ao User (com nome padrão)
-        from app.models.company import Company
-        company = Company(
-            name=f"Empresa {db_user.name}",
-            user_id=db_user.id  # Se existir esse campo, senão remova
-        )
-        db.add(company)
+        db.add(user)
         db.commit()
-        db.refresh(company)
-
-        # Criar Address em branco para a Company (com valores default)
-        company_address = Address(
-            company_id=company.id,
-            street="",
-            number="",
-            neighbourhood="",
-            city="",
-            state="",
-            zip_code="",
-            country="Brasil"
-        )
-        db.add(company_address)
-        db.commit()
-
-        # Se o usuário for admin, criar company automaticamente (mantém lógica anterior)
-        if db_user.role == UserRole.ADMIN:
-            if auth_user:
-                CompanyService.create_company_for_admin(
-                    db=db,
-                    user_id=db_user.id,
-                    user_name=db_user.name,
-                    user_email=auth_user.email
-                )
-        return db_user
+        db.refresh(user)
+        return user
 
     @staticmethod
     def get_user_by_id(db: Session, user_id: UUID) -> Optional[User]:
@@ -231,11 +177,17 @@ class UserService:
             "id": db_user.id,
             "auth_user_id": db_user.auth_user_id,
             "name": db_user.name,
+            "email": db_user.email,
+            "profile_picture_url": db_user.picture,
             "phone": db_user.phone,
+            "birth_date": db_user.birth_date,
+            "gender": db_user.gender.value if db_user.gender else None,
             "is_active": db_user.is_active,
             "is_deleted": db_user.is_deleted,
             "is_verified": db_user.is_verified,
+            "has_access": db_user.has_access,
             "role": db_user.role.value,
+            "social_media": db_user.social_media,
             "suspended_at": db_user.suspended_at,
             "created_at": db_user.created_at,
             "updated_at": db_user.updated_at,

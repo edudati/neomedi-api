@@ -6,7 +6,7 @@ from uuid import UUID
 
 from app.models.address import Address
 from app.models.user import User
-from app.schemas.address import AddressCreate, AddressUpdate
+from app.schemas.address import AddressCreate, AddressUpdate, UserAddressUpdate, CompanyAddressUpdate
 from app.models.user import UserRole
 
 
@@ -59,21 +59,53 @@ class AddressService:
         return True
 
     @staticmethod
-    def create_or_update_user_address(db: Session, user_id: UUID, address_data: AddressUpdate) -> Optional[Address]:
+    def create_address(db: Session, *, user_id=None, company_id=None, **address_fields) -> Address:
+        # Garante que apenas user_id OU company_id seja preenchido
+        if bool(user_id) == bool(company_id):
+            raise ValueError("Informe user_id OU company_id, nunca ambos ou nenhum.")
+        address = Address(user_id=user_id, company_id=company_id, **address_fields)
+        db.add(address)
+        db.commit()
+        db.refresh(address)
+        return address
+
+    @staticmethod
+    def create_or_update_user_address(db: Session, user_id: UUID, address_data: UserAddressUpdate) -> Optional[Address]:
         """Criar ou atualizar endereço do usuário"""
         # Verificar se já existe endereço para o usuário
-        existing_address = AddressService.get_address_by_user_id(db, user_id)
+        existing_address = db.query(Address).filter(Address.user_id == user_id).first()
         
         if existing_address:
             # Atualizar endereço existente
-            return AddressService.update_address(db, existing_address.id, address_data)
+            update_data = address_data.dict(exclude_unset=True, exclude={"user_id", "company_id"})
+            for field, value in update_data.items():
+                setattr(existing_address, field, value)
+            db.commit()
+            db.refresh(existing_address)
+            return existing_address
         else:
             # Criar novo endereço
-            create_data = AddressCreate(
-                user_id=user_id,
-                **address_data.dict(exclude_unset=True)
-            )
-            return AddressService.create_address(db, create_data)
+            address_fields = address_data.dict(exclude_unset=True, exclude={"user_id", "company_id"})
+            return AddressService.create_address(db, user_id=user_id, **address_fields)
+
+    @staticmethod
+    def create_or_update_company_address(db: Session, company_id: UUID, address_data: CompanyAddressUpdate) -> Optional[Address]:
+        """Criar ou atualizar endereço da empresa"""
+        # Verificar se já existe endereço para a empresa
+        existing_address = db.query(Address).filter(Address.company_id == company_id).first()
+        
+        if existing_address:
+            # Atualizar endereço existente
+            update_data = address_data.dict(exclude_unset=True, exclude={"company_id"})
+            for field, value in update_data.items():
+                setattr(existing_address, field, value)
+            db.commit()
+            db.refresh(existing_address)
+            return existing_address
+        else:
+            # Criar novo endereço
+            address_fields = address_data.dict(exclude_unset=True, exclude={"company_id"})
+            return AddressService.create_address(db, company_id=company_id, **address_fields)
 
     @staticmethod
     def get_address_with_user(db: Session, address_id: UUID) -> Optional[dict]:

@@ -33,6 +33,11 @@ class AddressCreate(AddressBase):
         return values
 
 
+class AddressCreateForCompany(AddressBase):
+    """Schema para criação de Address de company (sem user_id/company_id)"""
+    pass
+
+
 class AddressUpdate(BaseModel):
     """Schema para atualização de Address"""
     street: Optional[str] = None
@@ -45,16 +50,16 @@ class AddressUpdate(BaseModel):
     country: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    user_id: Optional[UUID] = None
-    company_id: Optional[UUID] = None
 
-    @model_validator(mode="after")
-    def check_user_or_company(cls, values):
-        user_id = values.user_id
-        company_id = values.company_id
-        if user_id and company_id:
-            raise ValueError('Informe apenas user_id ou company_id, não ambos.')
-        return values
+
+class UserAddressUpdate(AddressUpdate):
+    """Schema para atualização de endereço de usuário"""
+    pass
+
+
+class CompanyAddressUpdate(AddressUpdate):
+    """Schema para atualização de endereço de empresa"""
+    company_id: UUID
 
 
 class AddressResponse(AddressBase):
