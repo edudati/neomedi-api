@@ -39,28 +39,31 @@ async def signup_with_firebase(
 ):
     """
     Signup using Firebase token.
-    
-    Flow:
-    1. Receive Firebase token from frontend
-    2. Verify token with Firebase
-    3. Create new auth_user in database (if not exists)
-    4. Return user data + JWT tokens
     """
     try:
-        # Process token and create/update user + generate tokens
-        user, is_new_user, access_token, refresh_token = AuthService.process_firebase_token(db, request.firebase_token)
+        from app.services.user_professional import UserProfessionalService
+        # Criar user professional completo
+        user_professional = UserProfessionalService.create_user_professional(
+            db=db,
+            firebase_token=request.firebase_token,
+            company_name="Empresa Padrão"  # Nome padrão para a empresa
+        )
+        
+        # Buscar o AuthUser criado para gerar tokens
+        from app.services.auth import AuthService
+        auth_user = AuthService.get_user_by_firebase_uid(db, user_professional.user.auth_user.firebase_uid)
+        access_token, refresh_token = AuthService.create_auth_tokens(auth_user, db)
         
         return SignupResponse(
             success=True,
-            message="Signup successful" if is_new_user else "User already exists, data updated",
-            is_new_user=is_new_user,
+            message="Signup successful",
+            is_new_user=True,
             access_token=access_token,
             refresh_token=refresh_token,
-            email_verified=user.email_verified,
-            is_active=user.user.is_active if user.user else True,
-            created_at=user.created_at
+            email_verified=auth_user.email_verified,
+            is_active=auth_user.user.is_active if auth_user.user else True,
+            created_at=auth_user.created_at
         )
-        
     except HTTPException as e:
         return SignupResponse(
             success=False,

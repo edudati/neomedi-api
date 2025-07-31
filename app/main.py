@@ -3,13 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.api.v1.routes import auth, company, user_professional, user_assistant, user
+from app.api.v1.routes import auth, user, company
 from app.db.database import create_tables
 from app.models import (  # Importar modelos para criar tabelas
     auth_user,
-    specialty as specialty_model,
-    profession as profession_model,
-    user_assistant as user_assistant_model,
     user_professional as professional_model
 )
 
@@ -76,8 +73,6 @@ print("CORS configured successfully!")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(company.router, prefix="/api/v1/companies", tags=["companies"])
-app.include_router(user_professional.router, prefix="/api/v1/professionals", tags=["professionals"])
-app.include_router(user_assistant.router, prefix="/api/v1/user-assistants", tags=["user-assistants"])
 
 
 @app.get("/")

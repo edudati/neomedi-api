@@ -7,7 +7,7 @@ from uuid import UUID
 from app.models.company import Company
 from app.models.user import User, UserRole
 from app.models.address import Address
-from app.schemas.company import CompanyCreate, CompanyUpdate
+from app.schemas.company import CompanyCreate, CompanyUpdate, CompanyCreateWithAddress
 from app.core.security import get_current_user
 
 
@@ -15,55 +15,128 @@ class CompanyService:
     """Serviço para gerenciar empresas do sistema"""
 
     @staticmethod
-    def create_company_for_admin(db: Session, user_id: UUID, user_name: str, user_email: str) -> Company:
-        """Criar company automaticamente para usuário admin"""
-        # Gerar dados padrão para a company
-        company_data = {
-            "user_id": user_id,
-            "name": f"Clínica {user_name}",
-            "legal_name": f"Clínica {user_name} Ltda",
-            "legal_id": "00000000000000",  # CNPJ placeholder - deve ser atualizado
-            "email": user_email,
-            "phone": None,
-            "is_active": True,
-            "is_visible": True,
-            "is_public": False
-        }
+    def create_company_with_validation(db: Session, company_data: CompanyCreateWithAddress, user_professional_id: UUID) -> Company:
+        """
+        Criar company com validação de perfil professional e lógica de endereço
+        """
+        # Validar se o usuário existe e é professional
+        user = db.query(User).filter(
+            and_(
+                User.id == user_professional_id,
+                User.is_deleted == False
+            )
+        ).first()
         
-        db_company = Company(**company_data)
-        db.add(db_company)
+        if not user:
+            raise ValueError("Usuário não encontrado")
+        
+        if user.role != UserRole.PROFESSIONAL:
+            raise ValueError("Apenas usuários com perfil professional podem criar empresas")
+        
+        # Criar a company
+        company = Company(
+            name=company_data.name,
+            description=company_data.description,
+            email=company_data.email,
+            phone=company_data.phone,
+            social_media=company_data.social_media,
+            is_virtual=company_data.is_virtual,
+            is_active=company_data.is_active,
+            user_professional_id=user_professional_id
+        )
+        
+        db.add(company)
         db.commit()
-        db.refresh(db_company)
-        return db_company
+        db.refresh(company)
+        
+        # Criar endereço apenas se is_virtual = False e address foi fornecido
+        if not company_data.is_virtual and company_data.address:
+            from app.services.address import AddressService
+            AddressService.create_address(
+                db, 
+                company_id=company.id, 
+                **company_data.address.dict()
+            )
+        
+        return company
+
+    @staticmethod
+    def create_company(db: Session, name: str, user_professional_id: UUID, address_fields=None, **company_fields) -> Company:
+        company = Company(
+            name=name,
+            user_professional_id=user_professional_id,
+            **company_fields
+        )
+        db.add(company)
+        db.commit()
+        db.refresh(company)
+        if address_fields is None:
+            address_fields = {}
+        from app.services.address import AddressService
+        AddressService.create_address(db, company_id=company.id, **address_fields)
+        return company
 
     @staticmethod
     def get_company_by_id(db: Session, company_id: UUID) -> Optional[Company]:
         """Buscar company por ID"""
         return db.query(Company).filter(
-            and_(
-                Company.id == company_id,
-                Company.is_deleted == False
-            )
+            Company.id == company_id
         ).first()
 
     @staticmethod
     def get_company_by_user_id(db: Session, user_id: UUID) -> Optional[Company]:
         """Buscar company por user_id"""
         return db.query(Company).filter(
-            and_(
-                Company.user_id == user_id,
-                Company.is_deleted == False
-            )
+            Company.user_professional_id == user_id
         ).first()
+
+    @staticmethod
+    def get_companies_by_user_id(db: Session, user_id: UUID) -> List[dict]:
+        """Buscar todas as companies por user_id com endereços"""
+        companies = db.query(Company).filter(
+            Company.user_professional_id == user_id
+        ).all()
+        
+        result = []
+        for company in companies:
+            # Buscar endereço da company
+            address_data = None
+            company_address = db.query(Address).filter(Address.company_id == company.id).first()
+            if company_address:
+                address_data = {
+                    "id": company_address.id,
+                    "street": company_address.street,
+                    "number": company_address.number,
+                    "complement": company_address.complement,
+                    "neighbourhood": company_address.neighbourhood,
+                    "city": company_address.city,
+                    "state": company_address.state,
+                    "zip_code": company_address.zip_code,
+                    "country": company_address.country,
+                    "latitude": company_address.latitude,
+                    "longitude": company_address.longitude
+                }
+            
+            result.append({
+                "id": company.id,
+                "user_id": company.user_professional_id,
+                "name": company.name,
+                "description": company.description,
+                "email": company.email,
+                "phone": company.phone,
+                "social_media": company.social_media,
+                "is_virtual": company.is_virtual,
+                "is_active": company.is_active,
+                "address": address_data
+            })
+        
+        return result
 
     @staticmethod
     def get_company_by_user_id_with_address(db: Session, user_id: UUID) -> Optional[dict]:
         """Buscar company por user_id com dados do endereço"""
         db_company = db.query(Company).filter(
-            and_(
-                Company.user_id == user_id,
-                Company.is_deleted == False
-            )
+            Company.user_professional_id == user_id
         ).first()
         
         if not db_company:
@@ -89,18 +162,14 @@ class CompanyService:
         
         return {
             "id": db_company.id,
-            "user_id": db_company.user_id,
+            "user_id": db_company.user_professional_id,
             "name": db_company.name,
-            "legal_name": db_company.legal_name,
-            "legal_id": db_company.legal_id,
+            "description": db_company.description,
             "email": db_company.email,
             "phone": db_company.phone,
+            "social_media": db_company.social_media,
+            "is_virtual": db_company.is_virtual,
             "is_active": db_company.is_active,
-            "is_deleted": db_company.is_deleted,
-            "is_visible": db_company.is_visible,
-            "is_public": db_company.is_public,
-            "created_at": db_company.created_at,
-            "updated_at": db_company.updated_at,
             "address": address_data
         }
 
@@ -109,10 +178,7 @@ class CompanyService:
         """Buscar endereço da company através do user_id"""
         # Primeiro buscar a company do usuário
         db_company = db.query(Company).filter(
-            and_(
-                Company.user_id == user_id,
-                Company.is_deleted == False
-            )
+            Company.user_professional_id == user_id
         ).first()
         
         if not db_company:
@@ -208,16 +274,10 @@ class CompanyService:
         is_public: Optional[bool] = None
     ) -> List[Company]:
         """Listar companies com filtros opcionais"""
-        query = db.query(Company).filter(Company.is_deleted == False)
+        query = db.query(Company)
         
         if is_active is not None:
             query = query.filter(Company.is_active == is_active)
-        
-        if is_visible is not None:
-            query = query.filter(Company.is_visible == is_visible)
-        
-        if is_public is not None:
-            query = query.filter(Company.is_public == is_public)
         
         return query.offset(skip).limit(limit).all()
 
@@ -229,14 +289,14 @@ class CompanyService:
             return None
         
         # Verificar se o usuário atual é o proprietário da company
-        if db_company.user_id != current_user_id:
+        if db_company.user_professional_id != current_user_id:
             return None
         
         update_data = company_data.dict(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_company, field, value)
         
-        db_company.updated_at = datetime.utcnow()
+
         db.commit()
         db.refresh(db_company)
         return db_company
@@ -245,10 +305,7 @@ class CompanyService:
     def get_company_with_address(db: Session, company_id: UUID) -> Optional[dict]:
         """Buscar company com dados do endereço"""
         db_company = db.query(Company).filter(
-            and_(
-                Company.id == company_id,
-                Company.is_deleted == False
-            )
+            Company.id == company_id
         ).first()
         
         if not db_company:
@@ -274,18 +331,14 @@ class CompanyService:
         
         return {
             "id": db_company.id,
-            "user_id": db_company.user_id,
+            "user_id": db_company.user_professional_id,
             "name": db_company.name,
-            "legal_name": db_company.legal_name,
-            "legal_id": db_company.legal_id,
+            "description": db_company.description,
             "email": db_company.email,
             "phone": db_company.phone,
+            "social_media": db_company.social_media,
+            "is_virtual": db_company.is_virtual,
             "is_active": db_company.is_active,
-            "is_deleted": db_company.is_deleted,
-            "is_visible": db_company.is_visible,
-            "is_public": db_company.is_public,
-            "created_at": db_company.created_at,
-            "updated_at": db_company.updated_at,
             "address": address_data
         }
 
@@ -297,7 +350,7 @@ class CompanyService:
             return False
         
         # Verificar se o usuário é o proprietário da company
-        if db_company.user_id != user_id:
+        if db_company.user_professional_id != user_id:
             return False
         
         # Verificar se o usuário tem role ADMIN

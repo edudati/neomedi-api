@@ -7,9 +7,10 @@ from app.db.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.user import UserBasicResponse, UserWithAuthResponse, UserUpdate
-from app.schemas.address import AddressUpdate
+from app.schemas.address import UserAddressUpdate
 from app.services.user import UserService
 from app.services.address import AddressService
+from app.services.user_client import UserClientService
 
 router = APIRouter()
 
@@ -103,7 +104,7 @@ async def update_user_profile(
 
 @router.put("/address", response_model=UserWithAuthResponse)
 async def update_user_address(
-    address_data: AddressUpdate,
+    address_data: UserAddressUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -130,3 +131,52 @@ async def update_user_address(
     user_data_response = UserService.get_user_with_auth(db, UUID(user_id))
     
     return user_data_response 
+
+
+@router.post("/clients", response_model=dict)
+async def create_user_client(
+    request: dict,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Criar novo usuário CLIENT.
+    
+    Requer:
+    - firebase_token: string
+    - professional_id: UUID
+    - company_id: UUID
+    """
+    try:
+        # Validar campos obrigatórios
+        firebase_token = request.get("firebase_token")
+        professional_id = request.get("professional_id")
+        company_id = request.get("company_id")
+        
+        if not all([firebase_token, professional_id, company_id]):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="firebase_token, professional_id e company_id são obrigatórios"
+            )
+        
+        # Criar user_client usando o serviço
+        user_client = UserClientService.create_user_client(
+            db=db,
+            firebase_token=firebase_token,
+            professional_id=professional_id,
+            company_id=company_id
+        )
+        
+        return {
+            "success": True,
+            "message": "Usuário CLIENT criado com sucesso",
+            "user_client_id": str(user_client.user_id)
+        }
+        
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno: {str(e)}"
+        ) 
