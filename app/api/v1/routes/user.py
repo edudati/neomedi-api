@@ -8,8 +8,8 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.user import UserBasicResponse, UserWithAuthResponse, UserUpdate
 from app.schemas.address import AddressUpdate
-from app.services.user_service import UserService
-from app.services.address_service import AddressService
+from app.services.user import UserService
+from app.services.address import AddressService
 
 router = APIRouter()
 

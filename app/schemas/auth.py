@@ -3,12 +3,12 @@ from typing import Optional, Dict, Any
 
 
 class FirebaseTokenRequest(BaseModel):
-    """Schema para requisição de token Firebase"""
+    """Schema to request Firebase token"""
     firebase_token: str
 
 
 class JWTTokenResponse(BaseModel):
-    """Schema para resposta de token JWT"""
+    """Schema to response JWT token"""
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -16,12 +16,12 @@ class JWTTokenResponse(BaseModel):
 
 
 class RefreshTokenRequest(BaseModel):
-    """Schema para requisição de refresh token"""
+    """Schema to request refresh token"""
     refresh_token: str
 
 
 class UserInfo(BaseModel):
-    """Schema para informações do usuário"""
+    """Schema to user information"""
     uid: str
     email: EmailStr
     email_verified: bool
@@ -34,13 +34,13 @@ class UserInfo(BaseModel):
 
 
 class LogoutResponse(BaseModel):
-    """Schema para resposta de logout"""
+    """Schema to response logout"""
     success: bool
     message: str
 
 
 class TokenValidationResponse(BaseModel):
-    """Schema para resposta de validação de token"""
+    """Schema to response token validation"""
     valid: bool
     user: Optional[UserInfo] = None
     message: Optional[str] = None 

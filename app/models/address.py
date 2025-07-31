@@ -6,7 +6,7 @@ from app.db.database import Base
 
 
 class Address(Base):
-    """Modelo para endereços"""
+    """Model to address"""
     __tablename__ = "addresses"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
@@ -21,11 +21,13 @@ class Address(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
-    # Relacionamentos
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True)
+    # Foreign Keys (only one should be filled per address)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, unique=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True, unique=True)
+
+    # Relationships
     user = relationship("User", back_populates="address")
-    company = relationship("Company", back_populates="address", uselist=False)
+    company = relationship("Company", back_populates="address")
 
     def __repr__(self):
-        return f"<Address(id={self.id}, street='{self.street}', city='{self.city}')>" 
+        return f"<Address(id={self.id}, street='{self.street}', city='{self.city}')>"

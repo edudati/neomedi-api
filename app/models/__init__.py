@@ -1,16 +1,13 @@
 # Modelos SQLAlchemy
 from .auth_user import AuthUser
-from .user import User, UserRole
+from .user import User
+from .user_professional import UserProfessional
+from .user_client import UserClient
 from .address import Address
 from .company import Company
-from .professional import Professional
-from .specialty import Specialty, ProfessionalSpecialty
-from .profession import Profession, ProfessionalProfession
-from .user_assistant import UserAssistant, AssistantClinic, AssistantProfessional
+from .enums import UserRole, Gender
 
 __all__ = [
-    "AuthUser", "User", "UserRole", "Address", "Company",
-    "Professional", "Specialty", "ProfessionalSpecialty",
-    "Profession", "ProfessionalProfession",
-    "UserAssistant", "AssistantClinic", "AssistantProfessional"
+    "AuthUser", "User", "UserProfessional", "UserClient",
+    "Address", "Company", "UserRole", "Gender"
 ] 

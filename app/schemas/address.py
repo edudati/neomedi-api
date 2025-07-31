@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 from uuid import UUID
 
@@ -19,7 +19,18 @@ class AddressBase(BaseModel):
 
 class AddressCreate(AddressBase):
     """Schema para criação de Address"""
-    user_id: UUID
+    user_id: Optional[UUID] = None
+    company_id: Optional[UUID] = None
+
+    @model_validator(mode="after")
+    def check_user_or_company(cls, values):
+        user_id = values.user_id
+        company_id = values.company_id
+        if not user_id and not company_id:
+            raise ValueError('É necessário informar user_id ou company_id.')
+        if user_id and company_id:
+            raise ValueError('Informe apenas user_id ou company_id, não ambos.')
+        return values
 
 
 class AddressUpdate(BaseModel):
@@ -34,12 +45,23 @@ class AddressUpdate(BaseModel):
     country: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    user_id: Optional[UUID] = None
+    company_id: Optional[UUID] = None
+
+    @model_validator(mode="after")
+    def check_user_or_company(cls, values):
+        user_id = values.user_id
+        company_id = values.company_id
+        if user_id and company_id:
+            raise ValueError('Informe apenas user_id ou company_id, não ambos.')
+        return values
 
 
 class AddressResponse(AddressBase):
     """Schema para resposta de Address"""
     id: UUID
-    user_id: UUID
+    user_id: Optional[UUID] = None
+    company_id: Optional[UUID] = None
 
     class Config:
         from_attributes = True

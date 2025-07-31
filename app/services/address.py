@@ -7,72 +7,54 @@ from uuid import UUID
 from app.models.address import Address
 from app.models.user import User
 from app.schemas.address import AddressCreate, AddressUpdate
+from app.models.user import UserRole
 
 
 class AddressService:
     """Serviço para gerenciar endereços"""
 
     @staticmethod
-    def create_address(db: Session, address_data: AddressCreate) -> Address:
-        """Criar novo endereço"""
-        db_address = Address(**address_data.dict())
-        db.add(db_address)
+    def add_address(db: Session, address_data: AddressCreate, current_user):
+        # Permissão
+        if current_user.role != UserRole.PROFESSIONAL:
+            raise PermissionError("Apenas profissionais podem adicionar endereços.")
+        # Validação de destino
+        if bool(address_data.user_id) == bool(address_data.company_id):
+            raise ValueError("Informe user_id OU company_id, nunca ambos ou nenhum.")
+        address = Address(**address_data.dict())
+        db.add(address)
         db.commit()
-        db.refresh(db_address)
-        return db_address
+        db.refresh(address)
+        return address
 
     @staticmethod
-    def get_address_by_id(db: Session, address_id: UUID) -> Optional[Address]:
-        """Buscar endereço por ID"""
-        return db.query(Address).filter(Address.id == address_id).first()
-
-    @staticmethod
-    def get_address_by_user_id(db: Session, user_id: UUID) -> Optional[Address]:
-        """Buscar endereço por user_id"""
-        return db.query(Address).filter(Address.user_id == user_id).first()
-
-    @staticmethod
-    def get_addresses(
-        db: Session, 
-        skip: int = 0, 
-        limit: int = 100,
-        city: Optional[str] = None,
-        state: Optional[str] = None
-    ) -> List[Address]:
-        """Listar endereços com filtros opcionais"""
-        query = db.query(Address)
-        
-        if city:
-            query = query.filter(Address.city.ilike(f"%{city}%"))
-        
-        if state:
-            query = query.filter(Address.state.ilike(f"%{state}%"))
-        
-        return query.offset(skip).limit(limit).all()
-
-    @staticmethod
-    def update_address(db: Session, address_id: UUID, address_data: AddressUpdate) -> Optional[Address]:
-        """Atualizar endereço"""
-        db_address = AddressService.get_address_by_id(db, address_id)
-        if not db_address:
-            return None
-        
-        update_data = address_data.dict(exclude_unset=True)
+    def edit_address(db: Session, address_id: UUID, address_update: AddressUpdate, current_user):
+        if current_user.role != UserRole.PROFESSIONAL:
+            raise PermissionError("Apenas profissionais podem editar endereços.")
+        address = db.query(Address).filter(Address.id == address_id).first()
+        if not address:
+            raise ValueError("Endereço não encontrado.")
+        # Não permite mudar user_id/company_id
+        update_data = address_update.dict(exclude_unset=True, exclude={"user_id", "company_id"})
         for field, value in update_data.items():
-            setattr(db_address, field, value)
-        
+            setattr(address, field, value)
         db.commit()
-        db.refresh(db_address)
-        return db_address
+        db.refresh(address)
+        return address
 
     @staticmethod
-    def delete_address(db: Session, address_id: UUID) -> bool:
-        """Deletar endereço"""
-        db_address = AddressService.get_address_by_id(db, address_id)
-        if not db_address:
-            return False
-        
-        db.delete(db_address)
+    def delete_address(db: Session, address_id: UUID, current_user):
+        if current_user.role != UserRole.PROFESSIONAL:
+            raise PermissionError("Apenas profissionais podem remover endereços.")
+        address = db.query(Address).filter(Address.id == address_id).first()
+        if not address:
+            raise ValueError("Endereço não encontrado.")
+        # Se for address de company, garantir que a empresa terá pelo menos um address
+        if address.company_id:
+            company_addresses = db.query(Address).filter(Address.company_id == address.company_id).count()
+            if company_addresses <= 1:
+                raise ValueError("A empresa deve ter pelo menos um endereço.")
+        db.delete(address)
         db.commit()
         return True
 
