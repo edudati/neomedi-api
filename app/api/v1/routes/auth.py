@@ -13,7 +13,7 @@ from app.core.security import (
 )
 from app.core.config import settings
 from app.db.database import get_db
-from app.services.auth_service import AuthService
+from app.services.auth import AuthService
 from app.schemas.auth import (
     FirebaseTokenRequest,
     JWTTokenResponse,
@@ -38,24 +38,21 @@ async def signup_with_firebase(
     db: Session = Depends(get_db)
 ):
     """
-    Signup usando token do Firebase.
+    Signup using Firebase token.
     
-    Fluxo:
-    1. Recebe token do Firebase do frontend
-    2. Verifica o token com Firebase
-    3. Cria novo auth_user no banco (se não existir)
-    4. Retorna dados do usuário + tokens JWT
+    Flow:
+    1. Receive Firebase token from frontend
+    2. Verify token with Firebase
+    3. Create new auth_user in database (if not exists)
+    4. Return user data + JWT tokens
     """
-    print(f"🔐 Recebendo requisição de signup")
     try:
-        print(f"🔐 Processando token Firebase...")
-        # Processar token e criar/atualizar usuário + gerar tokens
+        # Process token and create/update user + generate tokens
         user, is_new_user, access_token, refresh_token = AuthService.process_firebase_token(db, request.firebase_token)
         
-        print(f"✅ {'Usuário criado' if is_new_user else 'Usuário atualizado'} com sucesso: {user.email}")
         return SignupResponse(
             success=True,
-            message="Signup realizado com sucesso" if is_new_user else "Usuário já existe, dados atualizados",
+            message="Signup successful" if is_new_user else "User already exists, data updated",
             is_new_user=is_new_user,
             access_token=access_token,
             refresh_token=refresh_token,
@@ -65,17 +62,15 @@ async def signup_with_firebase(
         )
         
     except HTTPException as e:
-        print(f"❌ HTTPException no signup: {e.detail}")
         return SignupResponse(
             success=False,
-            message=f"Erro no signup: {e.detail}",
+            message=f"Signup error: {e.detail}",
             is_new_user=False
         )
     except Exception as e:
-        print(f"❌ Exception no signup: {str(e)}")
         return SignupResponse(
             success=False,
-            message=f"Erro interno: {str(e)}",
+            message=f"Internal error: {str(e)}",
             is_new_user=False
         )
 
@@ -86,22 +81,22 @@ async def login_with_firebase(
     db: Session = Depends(get_db)
 ):
     """
-    Login usando token do Firebase.
+    Login using Firebase token.
     
-    Fluxo:
-    1. Recebe token do Firebase do frontend
-    2. Verifica o token com Firebase
-    3. Busca/atualiza auth_user no banco (cria se não existir)
-    4. Cria JWT local com expiração de 15 min
-    5. Cria refresh token com expiração de 7 dias
+    Flow:
+    1. Receive Firebase token from frontend
+    2. Verify token with Firebase
+    3. Search/update auth_user in database (create if not exists)
+    4. Create local JWT with 15 min expiration
+    5. Create refresh token with 7 days expiration
     """
     try:
-        # Processar token e buscar/atualizar usuário + gerar tokens
+        # Process token and search/update user + generate tokens
         user, is_new_user, access_token, refresh_token = AuthService.process_firebase_token(db, request.firebase_token)
         
         return LoginResponse(
             success=True,
-            message="Login realizado com sucesso" if not is_new_user else "Novo usuário criado durante login",
+            message="Login successful" if not is_new_user else "New user created during login",
             access_token=access_token,
             refresh_token=refresh_token,
             email_verified=user.email_verified,
@@ -112,29 +107,29 @@ async def login_with_firebase(
     except HTTPException as e:
         return LoginResponse(
             success=False,
-            message=f"Erro no login: {e.detail}"
+            message=f"Login error: {e.detail}"
         )
     except Exception as e:
         return LoginResponse(
             success=False,
-            message=f"Erro interno: {str(e)}"
+            message=f"Internal error: {str(e)}"
         )
 
 
 @router.post("/refresh", response_model=JWTTokenResponse)
 async def refresh_token(request: RefreshTokenRequest):
     """
-    Renova o access token usando o refresh token.
+    Renew access token using refresh token.
     
-    Usado quando o access token expira (a cada 15 min).
+    Used when access token expires (every 15 min).
     """
     try:
-        # Renovar access token
+        # Renew access token
         new_access_token = refresh_access_token(request.refresh_token)
         
         return JWTTokenResponse(
             access_token=new_access_token,
-            refresh_token=request.refresh_token,  # Mantém o mesmo refresh token
+            refresh_token=request.refresh_token,  # Keep the same refresh token
             token_type="bearer",
             expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
@@ -149,22 +144,20 @@ async def refresh_token(request: RefreshTokenRequest):
 @router.post("/logout", response_model=LogoutResponse)
 async def logout(current_user: dict = Depends(get_current_user)):
     """
-    Logout do usuário.
-    
-    No futuro, pode implementar blacklist de tokens.
+    User Logout
     """
     return LogoutResponse(
         success=True,
-        message="Logout realizado com sucesso"
+        message="Logout successful"
     )
 
 
 @router.get("/me", response_model=UserInfo)
 async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
     """
-    Retorna informações do usuário atual baseado no JWT.
+    Return current user information based on JWT.
     
-    O frontend pode usar este endpoint para extrair email, name e user_uid do JWT.
+    The frontend can use this endpoint to extract email, name and user_uid from JWT.
     """
     return UserInfo(
         uid=current_user.get("user_uid"),
@@ -179,12 +172,12 @@ async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_curre
 @router.post("/validate", response_model=TokenValidationResponse)
 async def validate_token(request: FirebaseTokenRequest):
     """
-    Valida um token (Firebase ou JWT local).
+    Validate a token (Firebase or local JWT).
     
-    Útil para verificar se um token ainda é válido.
+    Useful to check if a token is still valid.
     """
     try:
-        # Tentar validar como JWT local primeiro
+        # Try to validate as local JWT first
         from app.core.security import verify_jwt_token
         user_data = verify_jwt_token(request.firebase_token)
         
@@ -198,12 +191,12 @@ async def validate_token(request: FirebaseTokenRequest):
                 user_uid=user_data.get("user_uid"),
                 picture=None
             ),
-            message="Token JWT válido"
+            message="Valid JWT token"
         )
         
     except HTTPException:
         try:
-            # Tentar validar como token Firebase
+            # Try to validate as Firebase token
             user_data = verify_firebase_token(request.firebase_token)
             
             return TokenValidationResponse(
@@ -213,23 +206,23 @@ async def validate_token(request: FirebaseTokenRequest):
                     email=user_data.get("email"),
                     email_verified=user_data.get("email_verified", False),
                     name=user_data.get("name"),
-                    user_uid=None,  # Firebase não tem user_uid do sistema
+                    user_uid=None,  # Firebase doesn't have system user_uid
                     picture=user_data.get("picture")
                 ),
-                message="Token Firebase válido"
+                message="Valid Firebase token"
             )
             
         except HTTPException:
             return TokenValidationResponse(
                 valid=False,
-                message="Token inválido"
+                message="Invalid token"
             )
 
 
 @router.get("/health")
 async def auth_health_check():
     """
-    Health check para o sistema de autenticação.
+    Health check for authentication system.
     """
     return {
         "status": "healthy",

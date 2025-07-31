@@ -4,7 +4,7 @@ from typing import Generator, Dict, Any
 
 from app.db.database import get_db
 from app.models.user import User
-from app.services.user_service import UserService
+from app.services.user import UserService
 from app.core.security import get_current_user as get_current_user_from_token
 
 
