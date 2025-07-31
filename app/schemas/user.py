@@ -44,7 +44,7 @@ class UserResponse(UserBase):
     id: UUID
     auth_user_id: int
     email: EmailStr
-    profile_picture_url: Optional[str] = None
+    picture: Optional[str] = None
     is_deleted: bool
     suspended_at: Optional[datetime] = None
     created_at: datetime

@@ -17,20 +17,77 @@ class UserService:
 
     @staticmethod
     def create_user(db: Session, auth_user: AuthUser, role: UserRole, **user_fields) -> User:
-        user = User(
-            auth_user_id=auth_user.id,
-            name=auth_user.display_name,
-            email=auth_user.email,  # Garantir que o email seja preenchido
-            role=role,
-            is_verified=False,
-            is_active=True,
-            has_access=True,  # Garantir que has_access seja True
-            **user_fields
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            logger.info(f"Iniciando criação de User - auth_user_id: {auth_user.id}, role: {role}")
+            logger.info(f"user_fields recebidos: {user_fields}")
+            
+            # Verificar se já existe um User com o mesmo email
+            existing_user = db.query(User).filter(User.email == auth_user.email).first()
+            if existing_user:
+                logger.error(f"Já existe um User com o email: {auth_user.email}")
+                raise Exception(f"Email já existe: {auth_user.email}")
+            
+            # Verificar se já existe um User com o mesmo auth_user_id
+            existing_user_by_auth = db.query(User).filter(User.auth_user_id == auth_user.id).first()
+            if existing_user_by_auth:
+                logger.error(f"Já existe um User com o auth_user_id: {auth_user.id}")
+                raise Exception(f"AuthUser já tem um User associado: {auth_user.id}")
+            
+            # Preparar dados base do usuário
+            user_data = {
+                "auth_user_id": auth_user.id,
+                "email": auth_user.email,  # Garantir que o email seja preenchido
+                "role": role,
+                "is_verified": False,
+                "is_active": True,
+                "has_access": True,  # Garantir que has_access seja True
+            }
+            
+            logger.info(f"Dados base do usuário: {user_data}")
+            
+            # Se name não foi fornecido em user_fields, usar display_name do auth_user
+            if "name" not in user_fields:
+                user_data["name"] = auth_user.display_name
+                logger.info(f"Usando display_name do auth_user: {auth_user.display_name}")
+            else:
+                logger.info(f"Usando name fornecido em user_fields: {user_fields['name']}")
+            
+            # Mesclar com user_fields (que pode conter name personalizado)
+            user_data.update(user_fields)
+            logger.info(f"Dados finais do usuário: {user_data}")
+            
+            # Criar o objeto User
+            logger.info("Criando objeto User...")
+            user = User(**user_data)
+            logger.info(f"Objeto User criado: {user}")
+            
+            # Adicionar ao banco
+            logger.info("Adicionando User ao banco...")
+            db.add(user)
+            logger.info("User adicionado à sessão")
+            
+            # Commit
+            logger.info("Fazendo commit...")
+            db.commit()
+            logger.info("Commit realizado com sucesso")
+            
+            # Refresh
+            logger.info("Fazendo refresh...")
+            db.refresh(user)
+            logger.info(f"User criado com sucesso: {user.id}")
+            
+            return user
+            
+        except Exception as e:
+            logger.error(f"Erro na criação do User: {str(e)}")
+            logger.error(f"Tipo do erro: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            db.rollback()
+            raise
 
     @staticmethod
     def get_user_by_id(db: Session, user_id: UUID) -> Optional[User]:
@@ -80,11 +137,11 @@ class UserService:
         update_data = user_data.dict(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_user, field, value)
-        # Sempre garantir que email e profile_picture_url estejam sincronizados com AuthUser
+        # Sempre garantir que email e picture estejam sincronizados com AuthUser
         auth_user = db.query(AuthUser).filter(AuthUser.id == db_user.auth_user_id).first()
         if auth_user:
             db_user.email = auth_user.email
-            db_user.profile_picture_url = auth_user.picture
+            db_user.picture = auth_user.picture
         db_user.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(db_user)
@@ -178,7 +235,7 @@ class UserService:
             "auth_user_id": db_user.auth_user_id,
             "name": db_user.name,
             "email": db_user.email,
-            "profile_picture_url": db_user.picture,
+            "picture": db_user.picture,
             "phone": db_user.phone,
             "birth_date": db_user.birth_date,
             "gender": db_user.gender.value if db_user.gender else None,
