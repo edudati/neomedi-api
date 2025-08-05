@@ -145,44 +145,43 @@ async def get_record(
         )
 
 
-@router.get("/patient/{patient_id}", response_model=List[RecordResponse])
-async def get_records_by_patient(
+@router.get("/patient/{patient_id}", response_model=RecordResponse)
+async def get_record_by_patient(
     patient_id: UUID,
-    skip: int = Query(0, ge=0, description="Número de registros para pular"),
-    limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros para retornar"),
     current_user: dict = Depends(get_current_user),
     record_repo: RecordRepository = Depends(get_record_repository)
 ):
     """
-    Busca prontuários por ID do paciente com paginação
+    Busca prontuário por ID do paciente
     
     - **patient_id**: ID do paciente
-    - **skip**: Número de registros para pular (paginação)
-    - **limit**: Número máximo de registros para retornar (máx: 1000)
     """
     try:
         use_case = GetRecordUseCase(record_repo)
-        records = await use_case.execute_by_patient_id(patient_id, skip, limit)
+        record = await use_case.execute_by_patient_id(patient_id)
         
-        return [
-            RecordResponse(
-                id=record.id,
-                patient_id=record.patient_id,
-                professional_id=record.professional_id,
-                company_id=record.company_id,
-                clinical_history=record.clinical_history,
-                surgical_history=record.surgical_history,
-                family_history=record.family_history,
-                habits=record.habits,
-                allergies=record.allergies,
-                current_medications=record.current_medications,
-                last_diagnoses=record.last_diagnoses,
-                tags=record.tags,
-                created_at=record.created_at,
-                updated_at=record.updated_at
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Prontuário para paciente {patient_id} não encontrado"
             )
-            for record in records
-        ]
+        
+        return RecordResponse(
+            id=record.id,
+            patient_id=record.patient_id,
+            professional_id=record.professional_id,
+            company_id=record.company_id,
+            clinical_history=record.clinical_history,
+            surgical_history=record.surgical_history,
+            family_history=record.family_history,
+            habits=record.habits,
+            allergies=record.allergies,
+            current_medications=record.current_medications,
+            last_diagnoses=record.last_diagnoses,
+            tags=record.tags,
+            created_at=record.created_at,
+            updated_at=record.updated_at
+        )
         
     except HTTPException:
         raise

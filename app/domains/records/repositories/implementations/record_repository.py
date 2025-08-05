@@ -60,13 +60,15 @@ class RecordRepository(IRecordRepository):
             return self._model_to_entity(record_model)
         return None
     
-    async def get_by_patient_id(self, patient_id: UUID, skip: int = 0, limit: int = 100) -> List[Record]:
-        """Busca records por ID do paciente com paginação"""
-        stmt = select(RecordModel).where(RecordModel.patient_id == patient_id).offset(skip).limit(limit).order_by(RecordModel.created_at.desc())
+    async def get_by_patient_id(self, patient_id: UUID) -> Optional[Record]:
+        """Busca record por ID do paciente"""
+        stmt = select(RecordModel).where(RecordModel.patient_id == patient_id)
         result = self._db.execute(stmt)
-        record_models = result.scalars().all()
+        record_model = result.scalar_one_or_none()
         
-        return [self._model_to_entity(model) for model in record_models]
+        if record_model:
+            return self._model_to_entity(record_model)
+        return None
     
     async def update(self, record: Record) -> Record:
         """Atualiza um record existente"""

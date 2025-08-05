@@ -27,7 +27,7 @@ class IRecordRepository(ABC):
         pass
     
     @abstractmethod
-    async def get_by_patient_id(self, patient_id: UUID, skip: int = 0, limit: int = 100) -> List[Record]:
+    async def get_by_patient_id(self, patient_id: UUID) -> Optional[Record]:
         """Busca record por ID do paciente"""
         pass
     
