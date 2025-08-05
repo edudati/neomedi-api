@@ -48,7 +48,10 @@ class CreateRecordUseCase:
         Returns:
             Record: Prontuário criado
         """
-        # Remover validação para permitir múltiplos prontuários por paciente
+        # Verificar se já existe prontuário para o paciente (1:1)
+        existing_record = await self._record_repository.get_by_patient_id(patient_id)
+        if existing_record:
+            raise ValueError(f"Já existe prontuário para o paciente {patient_id}")
         
         # Criar novo prontuário
         record = Record(
@@ -87,19 +90,17 @@ class GetRecordUseCase:
         """
         return await self._record_repository.get_by_id(record_id)
     
-    async def execute_by_patient_id(self, patient_id: UUID, skip: int = 0, limit: int = 100) -> List[Record]:
+    async def execute_by_patient_id(self, patient_id: UUID) -> Optional[Record]:
         """
-        Busca prontuários por ID do paciente com paginação
+        Busca prontuário por ID do paciente
         
         Args:
             patient_id: ID do paciente
-            skip: Número de registros para pular
-            limit: Número máximo de registros para retornar
             
         Returns:
-            List[Record]: Lista de prontuários encontrados
+            Optional[Record]: Prontuário encontrado ou None
         """
-        return await self._record_repository.get_by_patient_id(patient_id, skip, limit)
+        return await self._record_repository.get_by_patient_id(patient_id)
 
 
 class UpdateRecordUseCase:

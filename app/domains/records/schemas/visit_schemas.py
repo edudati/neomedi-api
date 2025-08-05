@@ -10,8 +10,8 @@ from uuid import UUID
 
 class VisitCreateRequest(BaseModel):
     """Schema para criação de atendimento"""
-    record_id: UUID = Field(..., description="ID do prontuário")
-    professional_id: UUID = Field(..., description="ID do profissional")
+    patient_id: UUID = Field(..., description="ID do paciente (para buscar o record automaticamente)")
+    professional_id: Optional[UUID] = Field(None, description="ID do profissional (opcional, obtido do JWT se não fornecido)")
     company_id: Optional[UUID] = Field(None, description="ID da clínica (opcional)")
     main_complaint: Optional[str] = Field(None, description="Queixa principal")
     current_illness_history: Optional[str] = Field(None, description="História da moléstia atual (HMA)")
@@ -24,8 +24,7 @@ class VisitCreateRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "record_id": "123e4567-e89b-12d3-a456-426614174000",
-                "professional_id": "123e4567-e89b-12d3-a456-426614174001",
+                "patient_id": "123e4567-e89b-12d3-a456-426614174000",
                 "company_id": "123e4567-e89b-12d3-a456-426614174002",
                 "main_complaint": "Dor de cabeça há 3 dias",
                 "current_illness_history": "Paciente relata cefaleia intensa iniciada há 3 dias",
