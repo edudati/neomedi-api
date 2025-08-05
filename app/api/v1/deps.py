@@ -5,14 +5,7 @@ from typing import Generator, Dict, Any
 from app.db.database import get_db
 from app.models.user import User
 from app.services.user import UserService
-from app.core.security import get_current_user as get_current_user_from_token
-
-
-def get_current_user() -> Dict[str, Any]:
-    """
-    Dependência para obter o usuário atual autenticado
-    """
-    return get_current_user_from_token
+from app.core.security import get_current_user
 
 
 def get_db_user(

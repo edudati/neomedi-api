@@ -4,6 +4,13 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.api.v1.routes import auth, user, company, client
+from app.domains.records import (
+    record_router,
+    visit_router,
+    follow_up_router,
+    exam_router,
+    decision_support_router
+)
 from app.db.database import create_tables
 from app.models import (  # Importar modelos para criar tabelas
     auth_user,
@@ -74,6 +81,13 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(company.router, prefix="/api/v1/companies", tags=["companies"])
 app.include_router(client.router, prefix="/api/v1/clients", tags=["clients"])
+
+# Records Domain Routes
+app.include_router(record_router, prefix="/api/v1/records", tags=["records"])
+app.include_router(visit_router, prefix="/api/v1/visits", tags=["visits"])
+app.include_router(follow_up_router, prefix="/api/v1/follow-ups", tags=["follow-ups"])
+app.include_router(exam_router, prefix="/api/v1/exams", tags=["exams"])
+app.include_router(decision_support_router, prefix="/api/v1/decision-support", tags=["decision-support"])
 
 
 @app.get("/")
