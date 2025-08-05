@@ -2,7 +2,7 @@
 Record Repository Implementation - Implementação concreta do repositório de Records
 Mapeia entidades Record para SQLAlchemy models e vice-versa.
 """
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -60,15 +60,13 @@ class RecordRepository(IRecordRepository):
             return self._model_to_entity(record_model)
         return None
     
-    async def get_by_patient_id(self, patient_id: UUID) -> Optional[Record]:
-        """Busca record por ID do paciente"""
-        stmt = select(RecordModel).where(RecordModel.patient_id == patient_id)
+    async def get_by_patient_id(self, patient_id: UUID, skip: int = 0, limit: int = 100) -> List[Record]:
+        """Busca records por ID do paciente com paginação"""
+        stmt = select(RecordModel).where(RecordModel.patient_id == patient_id).offset(skip).limit(limit).order_by(RecordModel.created_at.desc())
         result = self._db.execute(stmt)
-        record_model = result.scalar_one_or_none()
+        record_models = result.scalars().all()
         
-        if record_model:
-            return self._model_to_entity(record_model)
-        return None
+        return [self._model_to_entity(model) for model in record_models]
     
     async def update(self, record: Record) -> Record:
         """Atualiza um record existente"""

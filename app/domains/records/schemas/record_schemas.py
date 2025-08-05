@@ -11,7 +11,6 @@ from uuid import UUID
 class RecordCreateRequest(BaseModel):
     """Schema para criação de prontuário"""
     patient_id: UUID = Field(..., description="ID do paciente")
-    professional_id: UUID = Field(..., description="ID do profissional criador")
     company_id: Optional[UUID] = Field(None, description="ID da clínica (opcional)")
     clinical_history: Optional[str] = Field(None, description="Histórico clínico")
     surgical_history: Optional[str] = Field(None, description="Histórico cirúrgico")
@@ -26,7 +25,6 @@ class RecordCreateRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "patient_id": "123e4567-e89b-12d3-a456-426614174000",
-                "professional_id": "123e4567-e89b-12d3-a456-426614174001",
                 "company_id": "123e4567-e89b-12d3-a456-426614174002",
                 "clinical_history": "Paciente com histórico de hipertensão",
                 "surgical_history": "Apendicectomia em 2018",

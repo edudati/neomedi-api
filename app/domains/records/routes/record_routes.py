@@ -39,16 +39,24 @@ async def create_record(
     Cria um novo prontuário para um paciente
     
     - **patient_id**: ID do paciente (obrigatório)
-    - **professional_id**: ID do profissional criador (obrigatório)
     - **company_id**: ID da clínica (opcional)
+    - professional_id: Obtido automaticamente do usuário logado
     - Outros campos clínicos opcionais
     """
     try:
+        # Pegar professional_id do JWT do usuário logado
+        professional_id = current_user.get("user_uid")
+        if not professional_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="user_uid não encontrado no token"
+            )
+        
         # Usar o use case para criar o record
         use_case = CreateRecordUseCase(record_repo)
         record = await use_case.execute(
             patient_id=request.patient_id,
-            professional_id=request.professional_id,
+            professional_id=UUID(professional_id),
             company_id=request.company_id,
             clinical_history=request.clinical_history,
             surgical_history=request.surgical_history,
@@ -137,43 +145,44 @@ async def get_record(
         )
 
 
-@router.get("/patient/{patient_id}", response_model=RecordResponse)
-async def get_record_by_patient(
+@router.get("/patient/{patient_id}", response_model=List[RecordResponse])
+async def get_records_by_patient(
     patient_id: UUID,
+    skip: int = Query(0, ge=0, description="Número de registros para pular"),
+    limit: int = Query(100, ge=1, le=1000, description="Número máximo de registros para retornar"),
     current_user: dict = Depends(get_current_user),
     record_repo: RecordRepository = Depends(get_record_repository)
 ):
     """
-    Busca prontuário por ID do paciente
+    Busca prontuários por ID do paciente com paginação
     
     - **patient_id**: ID do paciente
+    - **skip**: Número de registros para pular (paginação)
+    - **limit**: Número máximo de registros para retornar (máx: 1000)
     """
     try:
         use_case = GetRecordUseCase(record_repo)
-        record = await use_case.execute_by_patient_id(patient_id)
+        records = await use_case.execute_by_patient_id(patient_id, skip, limit)
         
-        if not record:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Prontuário para paciente {patient_id} não encontrado"
+        return [
+            RecordResponse(
+                id=record.id,
+                patient_id=record.patient_id,
+                professional_id=record.professional_id,
+                company_id=record.company_id,
+                clinical_history=record.clinical_history,
+                surgical_history=record.surgical_history,
+                family_history=record.family_history,
+                habits=record.habits,
+                allergies=record.allergies,
+                current_medications=record.current_medications,
+                last_diagnoses=record.last_diagnoses,
+                tags=record.tags,
+                created_at=record.created_at,
+                updated_at=record.updated_at
             )
-        
-        return RecordResponse(
-            id=record.id,
-            patient_id=record.patient_id,
-            professional_id=record.professional_id,
-            company_id=record.company_id,
-            clinical_history=record.clinical_history,
-            surgical_history=record.surgical_history,
-            family_history=record.family_history,
-            habits=record.habits,
-            allergies=record.allergies,
-            current_medications=record.current_medications,
-            last_diagnoses=record.last_diagnoses,
-            tags=record.tags,
-            created_at=record.created_at,
-            updated_at=record.updated_at
-        )
+            for record in records
+        ]
         
     except HTTPException:
         raise
